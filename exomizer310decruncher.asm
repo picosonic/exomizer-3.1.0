@@ -79,6 +79,22 @@ ELSE
 MACRO mac_get_bits
         jsr get_bits
 ENDMACRO
+ENDIF
+
+MACRO mac_init_zp
+{
+; -------------------------------------------------------------------
+; init zeropage and x reg. (8 bytes)
+;
+.init_zp
+        jsr get_crunched_byte
+        sta zp_bitbuf - 1,x
+        dex
+        bne init_zp
+}
+ENDMACRO
+
+IF INLINE_GET_BITS = 0
 .get_bits
         adc #$80                ; needs c=0, affects v
         asl a
@@ -114,9 +130,10 @@ ENDIF
 ; -------------------------------------------------------------------
 ; init zeropage and x reg. (8 bytes)
 {
-        pha
-        stx INPOS
-        sty INPOS+1
+        ; -------------------------------------------------------------------
+        pha ; Store page to decompress to
+        stx INPOS ; Store pointer to source data (lo)
+        sty INPOS+1 ; Store pointer to source data (hi)
 
 	lda #$AD ; LDA abs
 	sta get_crunched_byte
@@ -126,19 +143,28 @@ ENDIF
 	sta get_crunched_byte_code,X
 	dex
 	bpl copyloop
-        ldy #0
-        ldx #3
-.init_zp
-        jsr get_crunched_byte
-        sta zp_bitbuf - 1,x
-        dex
-        bne init_zp
+        ; -------------------------------------------------------------------
 
-; allow relocation of destination
+IF ENABLE_SPLIT_ENCODING = 1
+        ldx #3
+        jsr internal_gentable
+        jmp normal_decrunch
+.split_gentable
+        ldx #1
+.internal_gentable
+        jsr split_init_zp
+ELSE
+        ldx #3
+        mac_init_zp
+ENDIF
+
+        ; -------------------------------------------------------------------
+        ; allow relocation of destination
         clc
         pla
         adc zp_dest_hi
         sta zp_dest_hi
+        ; -------------------------------------------------------------------
 
 ; -------------------------------------------------------------------
 ; calculate tables (64 bytes) + get_bits macro
@@ -191,6 +217,16 @@ ENDIF
         cpy #encoded_entries
         bne table_gen
 ; -------------------------------------------------------------------
+IF ENABLE_SPLIT_ENCODING = 1
+        rts
+.split_decrunch
+        ldx #3
+        jsr split_init_zp
+; X reg must be 0 here
+        sec
+.normal_decrunch
+ENDIF
+; -------------------------------------------------------------------
 ; prepare for main decruncher
 IF DONT_REUSE_OFFSET = 0
         ror zp_ro_state
@@ -203,6 +239,7 @@ ENDIF
 ; copy one literal byte to destination (11 bytes)
 ;
 .literal_start1
+IF DECRUNCH_FORWARDS = 0
         tya
         bne no_hi_decr
         dec zp_dest_hi
@@ -211,8 +248,18 @@ IF DONT_REUSE_OFFSET = 0
 ENDIF
 .no_hi_decr
         dey
+ENDIF
         jsr get_crunched_byte
         sta (zp_dest_lo),y
+IF DECRUNCH_FORWARDS = 1
+        iny
+        bne skip_hi_incr
+        inc zp_dest_hi
+IF DONT_REUSE_OFFSET = 0
+        inc zp_src_hi
+ENDIF
+.skip_hi_incr
+ENDIF
 ; -------------------------------------------------------------------
 ; fetch sequence length index (15 bytes)
 ; x must be #0 when entering and contains the length index + 1
@@ -284,7 +331,11 @@ IF MAX_SEQUENCE_LENGTH_256 = 0
         sta <zp_bits_hi
 ENDIF
         lda #$e1
+IF EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE = 1
+        cpx #$04
+ELSE
         cpx #$03
+ENDIF
         bcs gbnc2_next
         lda tabl_bit - 1,x
 .gbnc2_next
@@ -304,12 +355,25 @@ ENDIF
 ;
         lda tabl_bi,x
         mac_get_bits
+IF DECRUNCH_FORWARDS = 0
         adc tabl_lo,x
         sta zp_src_lo
         lda zp_bits_hi
         adc tabl_hi,x
         adc zp_dest_hi
         sta zp_src_hi
+ELSE
+        clc
+        adc tabl_lo,x
+        eor #$ff
+        sta zp_src_lo
+        lda zp_bits_hi
+        adc tabl_hi,x
+        eor #$ff
+        adc zp_dest_hi
+        sta zp_src_hi
+        clc
+ENDIF
 ; -------------------------------------------------------------------
 ; prepare for copy loop (2 bytes)
 ;
@@ -318,18 +382,27 @@ ENDIF
 ; main copy loop (30 bytes)
 ;
 .copy_next
+IF DECRUNCH_FORWARDS = 0
         tya
         bne copy_skip_hi
         dec zp_dest_hi
         dec zp_src_hi
 .copy_skip_hi
         dey
+ENDIF
 IF LITERAL_SEQUENCES_NOT_USED = 0
         bcs get_literal_byte
 ENDIF
         lda (zp_src_lo),y
 .literal_byte_gotten
         sta (zp_dest_lo),y
+IF DECRUNCH_FORWARDS = 1
+        iny
+        bne copy_skip_hi
+        inc zp_dest_hi
+        inc zp_src_hi
+.copy_skip_hi
+ENDIF
         dex
         bne copy_next
 IF MAX_SEQUENCE_LENGTH_256 = 0
@@ -345,7 +418,7 @@ ELSE
         jmp next_round
 ENDIF
 IF MAX_SEQUENCE_LENGTH_256 = 0
-copy_next_hi:
+.copy_next_hi
         dec zp_len_hi
         jmp copy_next
 ENDIF
@@ -374,10 +447,10 @@ ENDIF
 ; exit or literal sequence handling (16(12) bytes)
 ;
 .exit_or_lit_seq
-IF LITERAL_SEQUENCES_NOT_USED=0
+IF LITERAL_SEQUENCES_NOT_USED = 0
         beq decr_exit
         jsr get_crunched_byte
-IF MAX_SEQUENCE_LENGTH_256=0
+IF MAX_SEQUENCE_LENGTH_256 = 0
         sta zp_len_hi
 ENDIF
         jsr get_crunched_byte
@@ -391,16 +464,34 @@ IF LITERAL_SEQUENCES_NOT_USED = 0
         jsr get_crunched_byte
         bcs literal_byte_gotten
 ENDIF
+IF EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE = 1
+; -------------------------------------------------------------------
+; the static stable used for bits+offset for lengths 1, 2 and 3 (3 bytes)
+; bits 2, 4, 4 and offsets 64, 48, 32 corresponding to
+; %10010000, %11100011, %11100010
+.tabl_bit
+        equb $90, $e3, $e2
+ELSE
 ; -------------------------------------------------------------------
 ; the static stable used for bits+offset for lengths 1 and 2 (2 bytes)
 ; bits 2, 4 and offsets 48, 32 corresponding to %10001100, %11100010
 .tabl_bit
         equb $8c, $e2
+ENDIF
 
-decrunch_table = $101 ; yes! we have enough stack space to use page 1 here
-;.decrunch_table SKIP 156
+IF ENABLE_SPLIT_ENCODING = 1
+.split_init_zp
+        mac_init_zp
+        rts
+ENDIF
 
+IF EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE = 1
+encoded_entries = 68
+.decrunch_table SKIP 156 + (16*3)
+ELSE
 encoded_entries = 52
+decrunch_table = $101 ; yes! we have enough stack space to use page 1 here
+ENDIF
 
 tabl_bi = decrunch_table
 tabl_lo = decrunch_table + encoded_entries

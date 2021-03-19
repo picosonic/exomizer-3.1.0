@@ -3,19 +3,28 @@
 INLINE_GET_BITS=1
 ; -------------------------------------------------------------------
 ; if literal sequences is not used (the data was crunched with the -c
-; flag) then the following line can be uncommented for shorter and.
-; slightly faster code.
+; flag) then setting to 1 gives shorter and slightly faster code.
 LITERAL_SEQUENCES_NOT_USED = 1
 ; -------------------------------------------------------------------
 ; if the sequence length is limited to 256 (the data was crunched with
-; the -M256 flag) then the following line can be uncommented for
-; shorter and slightly faster code.
+; the -M256 flag) then setting to 1 gives shorter and slightly faster code.
 MAX_SEQUENCE_LENGTH_256 = 1
 ; -------------------------------------------------------------------
+; if the sequence length 3 has its own offset table (the data was
+; crunched with the -P+16 flag) then the following must be set to 1.
+EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE = 0
+; -------------------------------------------------------------------
 ; if sequence offsets are not reused (the data was crunched with the
-; -P-32 flag) then the following line must be uncommented. Uncommenting the
-; line will also result in shorter and slightly faster code.
+; -P-32 flag) then the following must be set to 1, also results in
+; shorter and slightly faster code.
 DONT_REUSE_OFFSET = 1
+; -------------------------------------------------------------------
+; if decrunching forwards then the following must be set to 1.
+DECRUNCH_FORWARDS = 0
+; -------------------------------------------------------------------
+; if split encoding is used (the data is crunched with the -E flag)
+; then the following line must be set to 1.
+ENABLE_SPLIT_ENCODING = 0
 
 ; -------------------------------------------------------------------
 ; zero page addresses used
@@ -29,7 +38,7 @@ DONT_REUSE_OFFSET = 1
 .zp_src_hi      skip 1
 
 .zp_bits_hi     skip 1
-IF DONT_REUSE_OFFSET=0
+IF DONT_REUSE_OFFSET = 0
 .zp_ro_state    skip 1
 ENDIF
 
