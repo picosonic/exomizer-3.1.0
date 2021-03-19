@@ -1,0 +1,41 @@
+{
+    "version": "0.1.0",
+    "command": "bash",
+    "isShellCommand": true,
+    "showOutput": "always",
+    "echoCommand": true,
+    "suppressTaskName": true,
+    "args": [
+        "-c"
+    ],
+    "tasks": [
+        {
+            "taskName": "exo.ssd",
+            "problemMatcher": {
+                "owner": "6502",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceRoot}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "severity": 3,
+                    "message": 4
+                }
+            },
+            "args": [
+                "beebasm -v -i ${workspaceFolder}/exodemo.asm -do ${workspaceFolder}/exo.ssd -boot exo -title 'exo'"
+            ],
+            "isBuildCommand": true
+        },
+        {
+            "taskName": "Run 'exo.ssd' in Emulator",
+            "isTestCommand": true,
+            "args": [
+                "beebjit -0 ${workspaceFolder}/exo.ssd"
+            ]
+        }
+    ]
+}
