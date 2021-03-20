@@ -24,7 +24,7 @@ INCBIN "mycruncheddata.exo"
 
 ### Important
 
-This decruncher is hardcoded to use the bottom of the stack (&0100-&01A0, rounded up) as workspace while decompressing data. This is easily changed by modifying `decrunch_table`.
+This decruncher is hardcoded to use the bottom of the stack (&0100-&01A0, rounded up) as workspace while decompressing data (unless -P+16 is used and EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE = 1). This is easily changed by modifying `decrunch_table`.
 
 ## Preparing compressed data
 
