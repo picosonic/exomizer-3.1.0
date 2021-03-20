@@ -12,7 +12,7 @@ MAX_SEQUENCE_LENGTH_256 = 1
 ; -------------------------------------------------------------------
 ; if the sequence length 3 has its own offset table (the data was
 ; crunched with the -P+16 flag) then the following must be set to 1.
-EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE = 0
+EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE = 1
 ; -------------------------------------------------------------------
 ; if sequence offsets are not reused (the data was crunched with the
 ; -P-32 flag) then the following must be set to 1, also results in
