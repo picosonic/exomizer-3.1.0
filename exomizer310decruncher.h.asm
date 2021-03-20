@@ -1,6 +1,6 @@
 ; -------------------------------------------------------------------
 ; Controls if the shared get_bits routines should be inlined or not.
-INLINE_GET_BITS=1
+INLINE_GET_BITS = 1
 ; -------------------------------------------------------------------
 ; if literal sequences is not used (the data was crunched with the -c
 ; flag) then setting to 1 gives shorter and slightly faster code.

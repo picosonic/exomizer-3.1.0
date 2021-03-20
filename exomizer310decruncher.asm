@@ -162,7 +162,9 @@ ENDIF
         ; allow relocation of destination
         clc
         pla
+IF DECRUNCH_FORWARDS = 0
         adc zp_dest_hi
+ENDIF
         sta zp_dest_hi
         ; -------------------------------------------------------------------
 
