@@ -19,7 +19,7 @@ EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE = 0
 ; shorter and slightly faster code.
 DONT_REUSE_OFFSET = 1
 ; -------------------------------------------------------------------
-; if decrunching forwards then the following must be set to 1.
+; if decrunching forwards (with -f) then the following must be set to 1.
 DECRUNCH_FORWARDS = 0
 ; -------------------------------------------------------------------
 ; if split encoding is used (the data is crunched with the -E flag)
