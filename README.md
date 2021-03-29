@@ -10,13 +10,13 @@ This demo loads a fullscreen Mode 0 image into screen memory decompressing as it
 In your 6502 asm project, add this to your zeropage variables:
 
 ```
-include "exomizer302decruncher.h.asm"
+include "exomizer310decruncher.h.asm"
 ```
 
 And this anywhere in your code:
 
 ```
-include "exomizer302decruncher.asm"
+include "exomizer310decruncher.asm"
 
 .my_crunched_data
 INCBIN "mycruncheddata.exo"
